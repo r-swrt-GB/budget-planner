@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/Button';
-import { LogOut, DollarSign } from 'lucide-react';
+import { LogOut, DollarSign, LayoutDashboard, Bot } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,9 +10,31 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const navigationItems = [
+    {
+      name: 'Dashboard',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      name: 'Telegram Bot',
+      path: '/telegram-bot',
+      icon: Bot,
+    },
+  ];
+
+  const isActivePath = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
   };
 
   return (
@@ -41,6 +64,30 @@ export function Layout({ children }: LayoutProps) {
             )}
           </div>
         </div>
+        {user && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="flex space-x-8 -mb-px">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = isActivePath(item.path);
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => navigate(item.path)}
+                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      isActive
+                        ? 'border-green-500 text-green-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5 mr-2" />
+                    {item.name}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </header>
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {children}
