@@ -6,7 +6,7 @@ import { BudgetWithItems } from '../types';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Calculator } from 'lucide-react';
 
 interface IncomeItem {
   id?: string;
@@ -42,6 +42,15 @@ export function EditBudget() {
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calculatorModal, setCalculatorModal] = useState<{
+    isOpen: boolean;
+    itemIndex: number;
+    addAmount: string;
+  }>({
+    isOpen: false,
+    itemIndex: -1,
+    addAmount: '',
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -229,6 +238,38 @@ export function EditBudget() {
     const updated = [...expenseItems];
     updated[index] = { ...updated[index], [field]: value };
     setExpenseItems(updated);
+  };
+
+  const openCalculator = (index: number) => {
+    setCalculatorModal({
+      isOpen: true,
+      itemIndex: index,
+      addAmount: '',
+    });
+  };
+
+  const closeCalculator = () => {
+    setCalculatorModal({
+      isOpen: false,
+      itemIndex: -1,
+      addAmount: '',
+    });
+  };
+
+  const addToExpenseAmount = () => {
+    const { itemIndex, addAmount } = calculatorModal;
+    const amountToAdd = parseFloat(addAmount) || 0;
+    
+    if (itemIndex >= 0 && amountToAdd > 0) {
+      const updated = [...expenseItems];
+      updated[itemIndex] = {
+        ...updated[itemIndex],
+        amount_used: (updated[itemIndex].amount_used || 0) + amountToAdd,
+      };
+      setExpenseItems(updated);
+    }
+    
+    closeCalculator();
   };
 
   if (loading) {
@@ -499,13 +540,25 @@ export function EditBudget() {
                         />
                       </td>
                       <td className="py-2 pr-2">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.amount_used}
-                          onChange={(e) => updateExpenseItem(index, 'amount_used', parseFloat(e.target.value) || 0)}
-                          placeholder="0.00"
-                        />
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.amount_used}
+                            onChange={(e) => updateExpenseItem(index, 'amount_used', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openCalculator(index)}
+                            className="p-2 h-8 w-8"
+                          >
+                            <Calculator className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </td>
                       <td className="py-2 pr-2">
                         <Input
@@ -586,6 +639,50 @@ export function EditBudget() {
           </Button>
         </div>
       </form>
+
+      {/* Calculator Modal */}
+      {calculatorModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-80 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Add to Amount Used
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Current amount: R{(expenseItems[calculatorModal.itemIndex]?.amount_used || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Amount to add:
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                value={calculatorModal.addAmount}
+                onChange={(e) => setCalculatorModal(prev => ({ ...prev, addAmount: e.target.value }))}
+                placeholder="0.00"
+                className="w-full"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeCalculator}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={addToExpenseAmount}
+                disabled={!calculatorModal.addAmount || parseFloat(calculatorModal.addAmount) <= 0}
+              >
+                Add Amount
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
