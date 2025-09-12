@@ -18,6 +18,9 @@ export function AuthPage() {
         <p className="mt-2 text-center text-sm text-gray-600">
           Track your income, expenses, and savings with ease
         </p>
+         <p className="mt-2 text-center text-sm text-gray-400">
+          <i>(Designed and engineered by Elzé and Francois Borman)</i> 
+        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
