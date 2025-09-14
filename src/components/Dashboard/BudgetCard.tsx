@@ -1,7 +1,7 @@
 import { Budget } from '../../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { Eye, Edit, Trash2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface BudgetCardProps {
@@ -9,9 +9,10 @@ interface BudgetCardProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onDownload: (id: string) => void;
 }
 
-export function BudgetCard({ budget, onView, onEdit, onDelete }: BudgetCardProps) {
+export function BudgetCard({ budget, onView, onEdit, onDelete, onDownload }: BudgetCardProps) {
   const savingsColor = budget.savings >= 0 ? 'text-green-600' : 'text-red-600';
   const savingsIcon = budget.savings >= 0 ? '+' : '';
 
@@ -74,6 +75,15 @@ export function BudgetCard({ budget, onView, onEdit, onDelete }: BudgetCardProps
           >
             <Edit className="h-4 w-4 mr-1" />
             Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDownload(budget.id)}
+            className="flex-1"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Excel
           </Button>
         </div>
       </CardContent>

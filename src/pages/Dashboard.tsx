@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Budget } from '../types';
+import { Budget, BudgetWithItems } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { BudgetCard } from '../components/Dashboard/BudgetCard';
 import { Button } from '../components/ui/Button';
 import { Plus } from 'lucide-react';
+import { exportBudgetToExcel } from '../lib/excelExport';
 
 export function Dashboard() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -49,6 +50,57 @@ export function Dashboard() {
       setBudgets(budgets.filter(budget => budget.id !== id));
     } catch (error) {
       console.error('Error deleting budget:', error);
+    }
+  };
+
+  const handleDownload = async (id: string) => {
+    try {
+      // Fetch the full budget data with all items
+      const { data: budgetData, error: budgetError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (budgetError) throw budgetError;
+
+      // Fetch income items
+      const { data: incomeItems, error: incomeError } = await supabase
+        .from('income_items')
+        .select('*')
+        .eq('budget_id', id);
+
+      if (incomeError) throw incomeError;
+
+      // Fetch deduction items
+      const { data: deductionItems, error: deductionError } = await supabase
+        .from('deduction_items')
+        .select('*')
+        .eq('budget_id', id);
+
+      if (deductionError) throw deductionError;
+
+      // Fetch expense items
+      const { data: expenseItems, error: expenseError } = await supabase
+        .from('expense_items')
+        .select('*')
+        .eq('budget_id', id);
+
+      if (expenseError) throw expenseError;
+
+      // Create the full budget object with items
+      const budgetWithItems: BudgetWithItems = {
+        ...budgetData,
+        income_items: incomeItems || [],
+        deduction_items: deductionItems || [],
+        expense_items: expenseItems || []
+      };
+
+      // Export to Excel
+      exportBudgetToExcel(budgetWithItems);
+    } catch (error) {
+      console.error('Error downloading budget:', error);
+      alert('Failed to download budget. Please try again.');
     }
   };
 
@@ -96,6 +148,7 @@ export function Dashboard() {
               onView={(id) => navigate(`/budgets/${id}`)}
               onEdit={(id) => navigate(`/budgets/${id}/edit`)}
               onDelete={handleDelete}
+              onDownload={handleDownload}
             />
           ))}
         </div>
