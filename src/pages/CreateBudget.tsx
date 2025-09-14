@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -6,12 +6,14 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { ArrowLeft, Plus, Trash2, Calculator } from 'lucide-react';
+import { Category } from '../types';
 
 interface IncomeItem {
   item_name: string;
   date: string;
   full_amount: number;
   notes: string;
+  category_id: string | null;
 }
 
 interface DeductionItem {
@@ -27,6 +29,7 @@ interface ExpenseItem {
   full_amount: number;
   amount_used: number;
   notes: string;
+  category_id: string | null;
 }
 
 const getCurrentMonthFirstDay = () => {
@@ -48,7 +51,7 @@ const getCurrentMonthYear = () => {
 };
 
 const defaultIncomeItems: IncomeItem[] = [
-  { item_name: 'Salary', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '' },
+  { item_name: 'Salary', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '', category_id: null },
 ];
 
 const defaultDeductionItems: DeductionItem[] = [
@@ -57,31 +60,31 @@ const defaultDeductionItems: DeductionItem[] = [
 ];
 
 const defaultExpenseItems: ExpenseItem[] = [
-  { item_name: 'Medical', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Car insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Phone insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Laptop insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Pension fund', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Tax-free investment', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Savings account', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Rent', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Gym', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Spending Money', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Electricity', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Petrol', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Data / Call minutes / Wifi', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Haircut', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Clothes + Home beautification', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Food, meat vegetables fruits Weetbix milk, etc.', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Snacks, Chips, Cool drinks, extras', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Eating out', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Toiletries & Cleaning agents', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Gifts', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Dam visit/house/farm', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Weekend out', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Money withdrawn', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Car service', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Transaction charges', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
+  { item_name: 'Medical', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Car insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Phone insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Laptop insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Pension fund', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Tax-free investment', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Savings account', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Rent', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Gym', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Spending Money', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Electricity', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Petrol', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Data / Call minutes / Wifi', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Haircut', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Clothes + Home beautification', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Food, meat vegetables fruits Weetbix milk, etc.', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Snacks, Chips, Cool drinks, extras', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Eating out', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Toiletries & Cleaning agents', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Gifts', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Dam visit/house/farm', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Weekend out', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Money withdrawn', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Car service', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
+  { item_name: 'Transaction charges', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: null },
 ];
 
 export function CreateBudget() {
@@ -89,6 +92,7 @@ export function CreateBudget() {
   const [incomeItems, setIncomeItems] = useState<IncomeItem[]>(defaultIncomeItems);
   const [deductionItems, setDeductionItems] = useState<DeductionItem[]>(defaultDeductionItems);
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>(defaultExpenseItems);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [calculatorModal, setCalculatorModal] = useState<{
     isOpen: boolean;
@@ -101,6 +105,32 @@ export function CreateBudget() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Load categories on component mount
+  useEffect(() => {
+    if (user) {
+      fetchCategories();
+    }
+  }, [user]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('label', { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const getDefaultCategoryId = (type: 'income' | 'expense') => {
+    const generalCategory = categories.find(cat => cat.type === type && cat.label === 'General');
+    return generalCategory?.id || null;
+  };
 
   const totalIncome = incomeItems.reduce((sum, item) => sum + (item.full_amount || 0), 0);
   const totalDeductions = deductionItems.reduce((sum, item) => sum + (item.full_amount || 0), 0);
@@ -138,6 +168,7 @@ export function CreateBudget() {
           date: item.date || null,
           full_amount: item.full_amount || 0,
           notes: item.notes || null,
+          category_id: item.category_id,
         }));
 
       if (incomeData.length > 0) {
@@ -175,6 +206,7 @@ export function CreateBudget() {
           full_amount: item.full_amount || 0,
           amount_used: item.amount_used || 0,
           notes: item.notes || null,
+          category_id: item.category_id,
         }));
 
       if (expenseData.length > 0) {
@@ -193,14 +225,14 @@ export function CreateBudget() {
   };
 
   const addIncomeItem = () => {
-    setIncomeItems([...incomeItems, { item_name: '', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '' }]);
+    setIncomeItems([...incomeItems, { item_name: '', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '', category_id: getDefaultCategoryId('income') }]);
   };
 
   const removeIncomeItem = (index: number) => {
     setIncomeItems(incomeItems.filter((_, i) => i !== index));
   };
 
-  const updateIncomeItem = (index: number, field: keyof IncomeItem, value: string | number) => {
+  const updateIncomeItem = (index: number, field: keyof IncomeItem, value: string | number | null) => {
     const updated = [...incomeItems];
     updated[index] = { ...updated[index], [field]: value };
     setIncomeItems(updated);
@@ -221,14 +253,14 @@ export function CreateBudget() {
   };
 
   const addExpenseItem = () => {
-    setExpenseItems([...expenseItems, { item_name: '', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' }]);
+    setExpenseItems([...expenseItems, { item_name: '', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '', category_id: getDefaultCategoryId('expense') }]);
   };
 
   const removeExpenseItem = (index: number) => {
     setExpenseItems(expenseItems.filter((_, i) => i !== index));
   };
 
-  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
+  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number | null) => {
     const updated = [...expenseItems];
     updated[index] = { ...updated[index], [field]: value };
     setExpenseItems(updated);
@@ -323,6 +355,7 @@ export function CreateBudget() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Item</th>
+                    <th className="text-left py-2">Category</th>
                     <th className="text-left py-2">Date</th>
                     <th className="text-left py-2">Amount</th>
                     <th className="text-left py-2">Notes</th>
@@ -338,6 +371,22 @@ export function CreateBudget() {
                           onChange={(e) => updateIncomeItem(index, 'item_name', e.target.value)}
                           placeholder="Income source"
                         />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={item.category_id || ''}
+                          onChange={(e) => updateIncomeItem(index, 'category_id', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        >
+                          <option value="">Select category</option>
+                          {categories
+                            .filter(cat => cat.type === 'income')
+                            .map(category => (
+                              <option key={category.id} value={category.id}>
+                                {category.label}
+                              </option>
+                            ))}
+                        </select>
                       </td>
                       <td className="py-2 pr-2">
                         <Input
@@ -481,6 +530,7 @@ export function CreateBudget() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Item</th>
+                    <th className="text-left py-2">Category</th>
                     <th className="text-left py-2">Date</th>
                     <th className="text-left py-2">Full Amount</th>
                     <th className="text-left py-2">Amount Used</th>
@@ -497,6 +547,22 @@ export function CreateBudget() {
                           onChange={(e) => updateExpenseItem(index, 'item_name', e.target.value)}
                           placeholder="Expense type"
                         />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={item.category_id || ''}
+                          onChange={(e) => updateExpenseItem(index, 'category_id', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        >
+                          <option value="">Select category</option>
+                          {categories
+                            .filter(cat => cat.type === 'expense')
+                            .map(category => (
+                              <option key={category.id} value={category.id}>
+                                {category.label}
+                              </option>
+                            ))}
+                        </select>
                       </td>
                       <td className="py-2 pr-2">
                         <Input

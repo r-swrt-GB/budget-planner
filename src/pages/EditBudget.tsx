@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { BudgetWithItems } from '../types';
+import { BudgetWithItems, Category } from '../types';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -14,6 +14,7 @@ interface IncomeItem {
   date: string;
   full_amount: number;
   notes: string;
+  category_id: string | null;
 }
 
 interface DeductionItem {
@@ -31,6 +32,7 @@ interface ExpenseItem {
   full_amount: number;
   amount_used: number;
   notes: string;
+  category_id: string | null;
 }
 
 export function EditBudget() {
@@ -40,6 +42,7 @@ export function EditBudget() {
   const [incomeItems, setIncomeItems] = useState<IncomeItem[]>([]);
   const [deductionItems, setDeductionItems] = useState<DeductionItem[]>([]);
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calculatorModal, setCalculatorModal] = useState<{
@@ -57,8 +60,23 @@ export function EditBudget() {
   useEffect(() => {
     if (id && user) {
       fetchBudget();
+      fetchCategories();
     }
   }, [id, user]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('label', { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchBudget = async () => {
     try {
@@ -96,6 +114,7 @@ export function EditBudget() {
         date: item.date || '',
         full_amount: item.full_amount,
         notes: item.notes || '',
+        category_id: item.category_id,
       })) || []);
       setDeductionItems(deductionResult.data?.map(item => ({
         id: item.id,
@@ -111,6 +130,7 @@ export function EditBudget() {
         full_amount: item.full_amount,
         amount_used: item.amount_used || 0,
         notes: item.notes || '',
+        category_id: item.category_id,
       })) || []);
     } catch (error) {
       console.error('Error fetching budget:', error);
@@ -161,6 +181,7 @@ export function EditBudget() {
           date: item.date || null,
           full_amount: item.full_amount || 0,
           notes: item.notes || null,
+          category_id: item.category_id,
         }));
 
       const deductionData = deductionItems
@@ -182,6 +203,7 @@ export function EditBudget() {
           full_amount: item.full_amount || 0,
           amount_used: item.amount_used || 0,
           notes: item.notes || null,
+          category_id: item.category_id,
         }));
 
       await Promise.all([
@@ -199,14 +221,14 @@ export function EditBudget() {
   };
 
   const addIncomeItem = () => {
-    setIncomeItems([...incomeItems, { item_name: '', date: '', full_amount: 0, notes: '' }]);
+    setIncomeItems([...incomeItems, { item_name: '', date: '', full_amount: 0, notes: '', category_id: null }]);
   };
 
   const removeIncomeItem = (index: number) => {
     setIncomeItems(incomeItems.filter((_, i) => i !== index));
   };
 
-  const updateIncomeItem = (index: number, field: keyof IncomeItem, value: string | number) => {
+  const updateIncomeItem = (index: number, field: keyof IncomeItem, value: string | number | null) => {
     const updated = [...incomeItems];
     updated[index] = { ...updated[index], [field]: value };
     setIncomeItems(updated);
@@ -227,14 +249,14 @@ export function EditBudget() {
   };
 
   const addExpenseItem = () => {
-    setExpenseItems([...expenseItems, { item_name: '', date: '', full_amount: 0, amount_used: 0, notes: '' }]);
+    setExpenseItems([...expenseItems, { item_name: '', date: '', full_amount: 0, amount_used: 0, notes: '', category_id: null }]);
   };
 
   const removeExpenseItem = (index: number) => {
     setExpenseItems(expenseItems.filter((_, i) => i !== index));
   };
 
-  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
+  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number | null) => {
     const updated = [...expenseItems];
     updated[index] = { ...updated[index], [field]: value };
     setExpenseItems(updated);
@@ -348,6 +370,7 @@ export function EditBudget() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Item</th>
+                    <th className="text-left py-2">Category</th>
                     <th className="text-left py-2">Date</th>
                     <th className="text-left py-2">Amount</th>
                     <th className="text-left py-2">Notes</th>
@@ -363,6 +386,22 @@ export function EditBudget() {
                           onChange={(e) => updateIncomeItem(index, 'item_name', e.target.value)}
                           placeholder="Income source"
                         />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={item.category_id || ''}
+                          onChange={(e) => updateIncomeItem(index, 'category_id', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        >
+                          <option value="">Select category</option>
+                          {categories
+                            .filter(cat => cat.type === 'income')
+                            .map(category => (
+                              <option key={category.id} value={category.id}>
+                                {category.label}
+                              </option>
+                            ))}
+                        </select>
                       </td>
                       <td className="py-2 pr-2">
                         <Input
@@ -506,6 +545,7 @@ export function EditBudget() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Item</th>
+                    <th className="text-left py-2">Category</th>
                     <th className="text-left py-2">Date</th>
                     <th className="text-left py-2">Full Amount</th>
                     <th className="text-left py-2">Amount Used</th>
@@ -522,6 +562,22 @@ export function EditBudget() {
                           onChange={(e) => updateExpenseItem(index, 'item_name', e.target.value)}
                           placeholder="Expense type"
                         />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={item.category_id || ''}
+                          onChange={(e) => updateExpenseItem(index, 'category_id', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        >
+                          <option value="">Select category</option>
+                          {categories
+                            .filter(cat => cat.type === 'expense')
+                            .map(category => (
+                              <option key={category.id} value={category.id}>
+                                {category.label}
+                              </option>
+                            ))}
+                        </select>
                       </td>
                       <td className="py-2 pr-2">
                         <Input

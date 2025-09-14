@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { BudgetWithItems } from '../types';
+import { BudgetWithItems, Category } from '../types';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { ArrowLeft, Edit } from 'lucide-react';
@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 export function ViewBudget() {
   const { id } = useParams<{ id: string }>();
   const [budget, setBudget] = useState<BudgetWithItems | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -18,8 +19,53 @@ export function ViewBudget() {
   useEffect(() => {
     if (id && user) {
       fetchBudget();
+      fetchCategories();
     }
   }, [id, user]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const getCategoryDisplay = (categoryId: string | null) => {
+    if (!categoryId) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+          <div className="w-2 h-2 rounded-full mr-1 bg-gray-400"></div>
+          General
+        </span>
+      );
+    }
+    
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+          <div className="w-2 h-2 rounded-full mr-1 bg-gray-400"></div>
+          Unknown
+        </span>
+      );
+    }
+    
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+        <div 
+          className="w-2 h-2 rounded-full mr-1" 
+          style={{ backgroundColor: category.color }}
+        ></div>
+        {category.label}
+      </span>
+    );
+  };
 
   const fetchBudget = async () => {
     try {
@@ -153,6 +199,7 @@ export function ViewBudget() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-2">Item</th>
+                      <th className="text-left py-2">Category</th>
                       <th className="text-left py-2">Date</th>
                       <th className="text-left py-2">Amount</th>
                       <th className="text-left py-2">Notes</th>
@@ -162,6 +209,9 @@ export function ViewBudget() {
                     {budget.income_items.map((item) => (
                       <tr key={item.id} className="border-b">
                         <td className="py-2">{item.item_name}</td>
+                        <td className="py-2">
+                          {getCategoryDisplay(item.category_id)}
+                        </td>
                         <td className="py-2">
                           {item.date ? format(new Date(item.date), 'MMM dd, yyyy') : '-'}
                         </td>
@@ -175,6 +225,7 @@ export function ViewBudget() {
                   <tfoot>
                     <tr className="border-t-2 font-semibold">
                       <td className="py-2">Total Income</td>
+                      <td className="py-2"></td>
                       <td className="py-2"></td>
                       <td className="py-2 text-green-600">
                         R{budget.income_items.reduce((sum, item) => sum + item.full_amount, 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
@@ -251,6 +302,7 @@ export function ViewBudget() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-2">Item</th>
+                      <th className="text-left py-2">Category</th>
                       <th className="text-left py-2">Date</th>
                       <th className="text-left py-2">Full Amount</th>
                       <th className="text-left py-2">Amount Used</th>
@@ -261,6 +313,9 @@ export function ViewBudget() {
                     {budget.expense_items.map((item) => (
                       <tr key={item.id} className="border-b">
                         <td className="py-2">{item.item_name}</td>
+                        <td className="py-2">
+                          {getCategoryDisplay(item.category_id)}
+                        </td>
                         <td className="py-2">
                           {item.date ? format(new Date(item.date), 'MMM dd, yyyy') : '-'}
                         </td>
@@ -277,6 +332,7 @@ export function ViewBudget() {
                   <tfoot>
                     <tr className="border-t-2 font-semibold">
                       <td className="py-2">Total Expenses</td>
+                      <td className="py-2"></td>
                       <td className="py-2"></td>
                       <td className="py-2"></td>
                       <td className="py-2 text-red-600">

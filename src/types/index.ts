@@ -4,6 +4,16 @@ export interface User {
   name: string;
 }
 
+export interface Category {
+  id: string;
+  user_id: string;
+  label: string;
+  color: string;
+  type: 'income' | 'expense';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Budget {
   id: string;
   user_id: string;
@@ -22,6 +32,7 @@ export interface IncomeItem {
   date: string | null;
   full_amount: number;
   notes: string | null;
+  category_id: string | null;
 }
 
 export interface DeductionItem {
@@ -41,6 +52,7 @@ export interface ExpenseItem {
   full_amount: number;
   amount_used: number | null;
   notes: string | null;
+  category_id: string | null;
 }
 
 export interface BudgetWithItems extends Budget {
