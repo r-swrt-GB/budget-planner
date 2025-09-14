@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { ArrowLeft, Plus, Trash2, Calculator, Loader2 } from 'lucide-react';
+import { ImportedBudgetData } from '../lib/excelImport';
 
 interface IncomeItem {
   item_name: string;
@@ -63,6 +64,7 @@ export function CreateBudget() {
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [budgetExistsWarning, setBudgetExistsWarning] = useState(false);
   const [calculatorModal, setCalculatorModal] = useState<{
     isOpen: boolean;
     itemIndex: number;
@@ -74,13 +76,88 @@ export function CreateBudget() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Check if we have imported data
+  const importedData = location.state?.importedData as ImportedBudgetData | undefined;
+  const skipRecurring = location.state?.skipRecurring as boolean;
 
-  // Load recurring templates on component mount
+  // Load recurring templates or imported data on component mount
   useEffect(() => {
     if (user) {
-      loadRecurringTemplates();
+      if (importedData && skipRecurring) {
+        loadImportedData();
+      } else {
+        loadRecurringTemplates();
+      }
     }
-  }, [user]);
+  }, [user, importedData, skipRecurring]);
+
+  // Check for existing budget when month/year changes
+  useEffect(() => {
+    if (user && monthYear) {
+      checkBudgetExists(monthYear);
+    }
+  }, [user, monthYear]);
+
+  const loadImportedData = () => {
+    if (!importedData) return;
+    
+    setTemplatesLoading(true);
+    
+    try {
+      const defaultDate = getCurrentMonthFirstDay();
+      
+      // Convert imported income items
+      const importedIncomeItems: IncomeItem[] = importedData.incomeItems.map(item => ({
+        item_name: item.item_name,
+        date: item.date || defaultDate,
+        full_amount: item.full_amount,
+        notes: item.notes || ''
+      }));
+      
+      // Convert imported deduction items
+      const importedDeductionItems: DeductionItem[] = importedData.deductionItems.map(item => ({
+        item_name: item.item_name,
+        date: item.date || defaultDate,
+        full_amount: item.full_amount,
+        notes: item.notes || ''
+      }));
+      
+      // Convert imported expense items
+      const importedExpenseItems: ExpenseItem[] = importedData.expenseItems.map(item => ({
+        item_name: item.item_name,
+        date: item.date || defaultDate,
+        full_amount: item.full_amount,
+        amount_used: item.amount_used || 0,
+        notes: item.notes || ''
+      }));
+      
+      setIncomeItems(importedIncomeItems.length > 0 ? importedIncomeItems : [
+        { item_name: 'Salary', date: defaultDate, full_amount: 0, notes: '' }
+      ]);
+      
+      setDeductionItems(importedDeductionItems.length > 0 ? importedDeductionItems : [
+        { item_name: 'Tax', date: defaultDate, full_amount: 0, notes: '' },
+        { item_name: 'U.I.F', date: defaultDate, full_amount: 0, notes: '' }
+      ]);
+      
+      setExpenseItems(importedExpenseItems.length > 0 ? importedExpenseItems : defaultExpenseItems);
+      
+    } catch (error) {
+      console.error('Error loading imported data:', error);
+      // Fall back to default items on error
+      const defaultDate = getCurrentMonthFirstDay();
+      setIncomeItems([{ item_name: 'Salary', date: defaultDate, full_amount: 0, notes: '' }]);
+      setDeductionItems([
+        { item_name: 'Tax', date: defaultDate, full_amount: 0, notes: '' },
+        { item_name: 'U.I.F', date: defaultDate, full_amount: 0, notes: '' }
+      ]);
+      setExpenseItems(defaultExpenseItems);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
 
   const loadRecurringTemplates = async () => {
     if (!user) return;
@@ -155,7 +232,6 @@ export function CreateBudget() {
 
     } catch (error) {
       console.error('Error loading recurring templates:', error);
-      // Fall back to default items on error
       const defaultDate = getCurrentMonthFirstDay();
       setIncomeItems([{ item_name: 'Salary', date: defaultDate, full_amount: 0, notes: '' }]);
       setDeductionItems([
@@ -180,6 +256,24 @@ export function CreateBudget() {
 
     setLoading(true);
     try {
+      // Check if a budget for this month/year already exists
+      const { data: existingBudget, error: checkError } = await supabase
+        .from('budgets')
+        .select('id, month_year')
+        .eq('user_id', user.id)
+        .eq('month_year', monthYear)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking for existing budget:', checkError);
+        throw new Error('Failed to check for existing budgets');
+      }
+
+      if (existingBudget) {
+        alert(`A budget with this name already exists. Please choose a different name for this budget.`);
+        return;
+      }
+
       // Create budget
       const { data: budget, error: budgetError } = await supabase
         .from('budgets')
@@ -251,10 +345,41 @@ export function CreateBudget() {
       }
 
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating budget:', error);
+      
+      // Handle specific database constraint errors
+      if (error?.code === '23505' && error?.message?.includes('budgets_user_id_month_year_key')) {
+        alert(`A budget for "${monthYear}" already exists. Please choose a different month/year or edit the existing budget.`);
+      } else if (error?.message) {
+        alert(`Failed to create budget: ${error.message}`);
+      } else {
+        alert('Failed to create budget. Please try again.');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkBudgetExists = async (checkMonthYear: string) => {
+    if (!user || !checkMonthYear) return;
+    
+    try {
+      const { data: existingBudget, error } = await supabase
+        .from('budgets')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('month_year', checkMonthYear)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking budget existence:', error);
+        return;
+      }
+
+      setBudgetExistsWarning(!!existingBudget);
+    } catch (error) {
+      console.error('Error checking budget existence:', error);
     }
   };
 
@@ -346,8 +471,20 @@ export function CreateBudget() {
       </div>
        <div className="flex items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create New Budget</h1>
-          <p className="text-gray-600">Set up your monthly budget with income, deductions, and expenses</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Create New Budget
+            {importedData && skipRecurring && (
+              <span className="ml-3 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                Imported from Excel
+              </span>
+            )}
+          </h1>
+          <p className="text-gray-600">
+            {importedData && skipRecurring 
+              ? 'Review and modify the imported budget data before creating your budget'
+              : 'Set up your monthly budget with income, deductions, and expenses'
+            }
+          </p>
         </div>
       </div>
 
@@ -357,9 +494,17 @@ export function CreateBudget() {
             <CardContent className="py-12">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-600">Loading your recurring templates...</p>
+                <p className="text-gray-600">
+                  {importedData && skipRecurring 
+                    ? 'Loading imported budget data...' 
+                    : 'Loading your recurring templates...'
+                  }
+                </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  This will populate your budget with your saved income, deduction, and expense items
+                  {importedData && skipRecurring
+                    ? 'Processing your Excel file and preparing the budget form'
+                    : 'This will populate your budget with your saved income, deduction, and expense items'
+                  }
                 </p>
               </div>
             </CardContent>
@@ -383,6 +528,22 @@ export function CreateBudget() {
                       placeholder="e.g., January - 2026"
                       required
                     />
+                    {budgetExistsWarning && (
+                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm text-yellow-800">
+                              A budget for "{monthYear}" already exists. Please choose a different month/year or edit the existing budget from the dashboard.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -691,7 +852,7 @@ export function CreateBudget() {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading || !monthYear.trim()}>
+          <Button type="submit" disabled={loading || !monthYear.trim() || budgetExistsWarning}>
             {loading ? 'Creating...' : 'Create Budget'}
           </Button>
         </div>

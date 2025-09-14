@@ -4,13 +4,17 @@ import { Budget, BudgetWithItems } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { BudgetCard } from '../components/Dashboard/BudgetCard';
+import { ExcelImportModal } from '../components/Dashboard/ExcelImportModal';
 import { Button } from '../components/ui/Button';
-import { Plus } from 'lucide-react';
+import { Dropdown } from '../components/ui/Dropdown';
+import { Plus, FileText, Upload, ChevronDown } from 'lucide-react';
 import { exportBudgetToExcel } from '../lib/excelExport';
+import { parseExcelFile } from '../lib/excelImport';
 
 export function Dashboard() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -104,6 +108,23 @@ export function Dashboard() {
     }
   };
 
+  const handleExcelImport = async (file: File) => {
+    try {
+      const importedData = await parseExcelFile(file);
+      
+      // Navigate to create budget page with imported data
+      navigate('/budgets/create', { 
+        state: { 
+          importedData,
+          skipRecurring: true 
+        } 
+      });
+    } catch (error) {
+      console.error('Error importing Excel file:', error);
+      alert(error instanceof Error ? error.message : 'Failed to import Excel file. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -119,10 +140,27 @@ export function Dashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Budget Dashboard</h1>
           <p className="text-gray-600">Manage your monthly budgets and track your finances</p>
         </div>
-        <Button onClick={() => navigate('/budgets/create')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Budget
-        </Button>
+        <Dropdown
+          trigger={
+            <Button className="flex items-center">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Budget
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </Button>
+          }
+          items={[
+            {
+              label: 'Create Manually',
+              onClick: () => navigate('/budgets/create'),
+              icon: <FileText className="h-4 w-4" />
+            },
+            {
+              label: 'Import from Excel',
+              onClick: () => setShowImportModal(true),
+              icon: <Upload className="h-4 w-4" />
+            }
+          ]}
+        />
       </div>
 
       {budgets.length === 0 ? (
@@ -134,10 +172,27 @@ export function Dashboard() {
           <p className="text-gray-600 mb-4">
             Create your first budget to start tracking your income and expenses
           </p>
-          <Button onClick={() => navigate('/budgets/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Your First Budget
-          </Button>
+          <Dropdown
+            trigger={
+              <Button className="flex items-center">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Budget
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            }
+            items={[
+              {
+                label: 'Create Manually',
+                onClick: () => navigate('/budgets/create'),
+                icon: <FileText className="h-4 w-4" />
+              },
+              {
+                label: 'Import from Excel',
+                onClick: () => setShowImportModal(true),
+                icon: <Upload className="h-4 w-4" />
+              }
+            ]}
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -153,6 +208,13 @@ export function Dashboard() {
           ))}
         </div>
       )}
+
+      <ExcelImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleExcelImport}
+        userId={user?.id}
+      />
     </div>
   );
 }
