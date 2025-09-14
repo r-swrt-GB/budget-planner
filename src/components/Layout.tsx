@@ -23,11 +23,11 @@ export function Layout({ children }: LayoutProps) {
       path: '/dashboard',
       icon: LayoutDashboard,
     },
-    {
-      name: 'Telegram Bot',
-      path: '/telegram-bot',
-      icon: Bot,
-    },
+    // {
+    //   name: 'Telegram Bot',
+    //   path: '/telegram-bot',
+    //   icon: Bot,
+    // },
   ];
 
   const isActivePath = (path: string) => {
