@@ -1,4 +1,3 @@
-import React from 'react';
 import { Budget } from '../../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -19,10 +18,22 @@ export function BudgetCard({ budget, onView, onEdit, onDelete }: BudgetCardProps
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
-        <CardTitle className="text-lg">{budget.month_year}</CardTitle>
-        <p className="text-sm text-gray-500">
-          Created {format(new Date(budget.created_at), 'MMM dd, yyyy')}
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">{budget.month_year}</CardTitle>
+            <p className="text-sm text-gray-500">
+              Created {format(new Date(budget.created_at), 'MMM dd, yyyy')}
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDelete(budget.id)}
+            className="ml-2"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-2 mb-4">
@@ -63,13 +74,6 @@ export function BudgetCard({ budget, onView, onEdit, onDelete }: BudgetCardProps
           >
             <Edit className="h-4 w-4 mr-1" />
             Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => onDelete(budget.id)}
-          >
-            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>

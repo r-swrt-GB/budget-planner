@@ -7,6 +7,7 @@ import { CreateBudget } from './pages/CreateBudget';
 import { EditBudget } from './pages/EditBudget';
 import { ViewBudget } from './pages/ViewBudget';
 import { TelegramBot } from './pages/TelegramBot';
+import { Settings } from './pages/Settings';
 
 function App() {
   const { user, loading } = useAuth();
@@ -32,6 +33,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/telegram-bot" element={<TelegramBot />} />
           <Route path="/budgets/create" element={<CreateBudget />} />
           <Route path="/budgets/:id/edit" element={<EditBudget />} />

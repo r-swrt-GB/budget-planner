@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/Button';
-import { LogOut, DollarSign, LayoutDashboard, Bot } from 'lucide-react';
+import { LogOut, DollarSign, LayoutDashboard, Settings } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +22,11 @@ export function Layout({ children }: LayoutProps) {
       name: 'Dashboard',
       path: '/dashboard',
       icon: LayoutDashboard,
+    },
+    {
+      name: 'Settings',
+      path: '/settings',
+      icon: Settings,
     },
     // {
     //   name: 'Telegram Bot',

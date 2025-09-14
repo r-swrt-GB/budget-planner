@@ -89,6 +89,8 @@ export function ViewBudget() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
+        </div>
+        <div className="flex items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{budget.month_year}</h1>
             <p className="text-gray-600">

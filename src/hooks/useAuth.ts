@@ -50,11 +50,17 @@ export function useAuth() {
     return { error };
   };
 
+  const refreshUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user ?? null);
+  };
+
   return {
     user,
     loading,
     signIn,
     signUp,
     signOut,
+    refreshUser,
   };
 }
