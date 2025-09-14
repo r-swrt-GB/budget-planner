@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { ArrowLeft, Plus, Trash2, Calculator } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Calculator, Loader2 } from 'lucide-react';
 
 interface IncomeItem {
   item_name: string;
@@ -47,49 +47,22 @@ const getCurrentMonthYear = () => {
   return `${month} - ${year}`;
 };
 
-const defaultIncomeItems: IncomeItem[] = [
-  { item_name: 'Salary', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '' },
-];
-
-const defaultDeductionItems: DeductionItem[] = [
-  { item_name: 'Tax', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '' },
-  { item_name: 'U.I.F', date: getCurrentMonthFirstDay(), full_amount: 0, notes: '' },
-];
-
+// Fallback expense items for users without recurring templates
 const defaultExpenseItems: ExpenseItem[] = [
-  { item_name: 'Medical', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Car insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Phone insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Laptop insurance', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Pension fund', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Tax-free investment', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Savings account', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Rent', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Gym', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Spending Money', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Electricity', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Petrol', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Data / Call minutes / Wifi', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Haircut', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Clothes + Home beautification', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Food, meat vegetables fruits Weetbix milk, etc.', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Snacks, Chips, Cool drinks, extras', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Eating out', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Toiletries & Cleaning agents', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Gifts', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Dam visit/house/farm', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Weekend out', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Money withdrawn', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Car service', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
-  { item_name: 'Transaction charges', date: getCurrentMonthFirstDay(), full_amount: 0, amount_used: 0, notes: '' },
+  { item_name: 'Groceries', date: getCurrentMonthFirstDay(), full_amount: 2500, amount_used: 0, notes: '' },
+  { item_name: 'Utilities', date: getCurrentMonthFirstDay(), full_amount: 1500, amount_used: 0, notes: '' },
+  { item_name: 'Transport/Fuel', date: getCurrentMonthFirstDay(), full_amount: 1200, amount_used: 0, notes: '' },
+  { item_name: 'Medical/Healthcare', date: getCurrentMonthFirstDay(), full_amount: 800, amount_used: 0, notes: '' },
+  { item_name: 'Entertainment', date: getCurrentMonthFirstDay(), full_amount: 600, amount_used: 0, notes: '' },
 ];
 
 export function CreateBudget() {
   const [monthYear, setMonthYear] = useState(getCurrentMonthYear());
-  const [incomeItems, setIncomeItems] = useState<IncomeItem[]>(defaultIncomeItems);
-  const [deductionItems, setDeductionItems] = useState<DeductionItem[]>(defaultDeductionItems);
-  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>(defaultExpenseItems);
+  const [incomeItems, setIncomeItems] = useState<IncomeItem[]>([]);
+  const [deductionItems, setDeductionItems] = useState<DeductionItem[]>([]);
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
   const [calculatorModal, setCalculatorModal] = useState<{
     isOpen: boolean;
     itemIndex: number;
@@ -101,6 +74,99 @@ export function CreateBudget() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Load recurring templates on component mount
+  useEffect(() => {
+    if (user) {
+      loadRecurringTemplates();
+    }
+  }, [user]);
+
+  const loadRecurringTemplates = async () => {
+    if (!user) return;
+    
+    setTemplatesLoading(true);
+    try {
+      // Load recurring incomes
+      const { data: recurringIncomes } = await supabase
+        .from('recurring_incomes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      // Load recurring deductions
+      const { data: recurringDeductions } = await supabase
+        .from('recurring_deductions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      // Load recurring expenses
+      const { data: recurringExpenses } = await supabase
+        .from('recurring_expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      // Convert recurring templates to form items
+      const defaultDate = getCurrentMonthFirstDay();
+      
+      // Set income items from templates or use fallback
+      const incomeTemplates: IncomeItem[] = (recurringIncomes || [])
+        .filter(item => item.description.trim())
+        .map(item => ({
+          item_name: item.description,
+          date: defaultDate,
+          full_amount: item.amount,
+          notes: ''
+        }));
+      
+      setIncomeItems(incomeTemplates.length > 0 ? incomeTemplates : [
+        { item_name: 'Salary', date: defaultDate, full_amount: 0, notes: '' }
+      ]);
+
+      // Set deduction items from templates or use fallback
+      const deductionTemplates: DeductionItem[] = (recurringDeductions || [])
+        .filter(item => item.description.trim())
+        .map(item => ({
+          item_name: item.description,
+          date: defaultDate,
+          full_amount: item.amount,
+          notes: ''
+        }));
+      
+      setDeductionItems(deductionTemplates.length > 0 ? deductionTemplates : [
+        { item_name: 'Tax', date: defaultDate, full_amount: 0, notes: '' },
+        { item_name: 'U.I.F', date: defaultDate, full_amount: 0, notes: '' }
+      ]);
+
+      // Set expense items from templates or use fallback
+      const expenseTemplates: ExpenseItem[] = (recurringExpenses || [])
+        .filter(item => item.description.trim())
+        .map(item => ({
+          item_name: item.description,
+          date: defaultDate,
+          full_amount: item.full_amount, 
+          amount_used: 0,
+          notes: ''
+        }));
+      
+      setExpenseItems(expenseTemplates.length > 0 ? expenseTemplates : defaultExpenseItems);
+
+    } catch (error) {
+      console.error('Error loading recurring templates:', error);
+      // Fall back to default items on error
+      const defaultDate = getCurrentMonthFirstDay();
+      setIncomeItems([{ item_name: 'Salary', date: defaultDate, full_amount: 0, notes: '' }]);
+      setDeductionItems([
+        { item_name: 'Tax', date: defaultDate, full_amount: 0, notes: '' },
+        { item_name: 'U.I.F', date: defaultDate, full_amount: 0, notes: '' }
+      ]);
+      setExpenseItems(defaultExpenseItems);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
 
   const totalIncome = incomeItems.reduce((sum, item) => sum + (item.full_amount || 0), 0);
   const totalDeductions = deductionItems.reduce((sum, item) => sum + (item.full_amount || 0), 0);
@@ -286,27 +352,41 @@ export function CreateBudget() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Budget Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Month/Year
-                </label>
-                <Input
-                  type="text"
-                  value={monthYear}
-                  onChange={(e) => setMonthYear(e.target.value)}
-                  placeholder="e.g., January - 2026"
-                  required
-                />
+        {templatesLoading ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-600">Loading your recurring templates...</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  This will populate your budget with your saved income, deduction, and expense items
+                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Budget Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Month/Year
+                    </label>
+                    <Input
+                      type="text"
+                      value={monthYear}
+                      onChange={(e) => setMonthYear(e.target.value)}
+                      placeholder="e.g., January - 2026"
+                      required
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
         {/* Income Items */}
         <Card>
@@ -521,7 +601,7 @@ export function CreateBudget() {
                           <Input
                             type="number"
                             step="0.01"
-                            value={item.amount_used}
+                            value={item.amount_used === 0 ? '' : item.amount_used}
                             onChange={(e) => updateExpenseItem(index, 'amount_used', parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
                             className="flex-1"
@@ -615,6 +695,8 @@ export function CreateBudget() {
             {loading ? 'Creating...' : 'Create Budget'}
           </Button>
         </div>
+        </>
+        )}
       </form>
 
       {/* Calculator Modal */}

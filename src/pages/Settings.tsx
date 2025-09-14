@@ -3,8 +3,11 @@ import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { User, Mail, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Save, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { RecurringIncomesSection } from '../components/Settings/RecurringIncomesSection';
+import { RecurringDeductionsSection } from '../components/Settings/RecurringDeductionsSection';
+import { RecurringExpensesSection } from '../components/Settings/RecurringExpensesSection';
 
 export function Settings() {
   const { user, refreshUser } = useAuth();
@@ -12,7 +15,6 @@ export function Settings() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Update name when user data becomes available
   useEffect(() => {
     if (user?.user_metadata?.name) {
       setName(user.user_metadata.name);
@@ -29,7 +31,6 @@ export function Settings() {
     setMessage(null);
 
     try {
-      // Update auth user metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: { name: name.trim() }
       });
@@ -38,7 +39,6 @@ export function Settings() {
         throw authError;
       }
 
-      // Update the public users table
       const { error: dbError } = await supabase
         .from('users')
         .update({ 
@@ -51,12 +51,10 @@ export function Settings() {
         throw dbError;
       }
 
-      // Refresh user data to get the updated information
       await refreshUser();
 
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
       
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setMessage(null);
       }, 3000);
@@ -155,6 +153,15 @@ export function Settings() {
           </div>
         </div>
       </Card>
+
+      {/* Recurring Incomes Section */}
+      {user && <RecurringIncomesSection userId={user.id} />}
+
+      {/* Recurring Deductions Section */}
+      {user && <RecurringDeductionsSection userId={user.id} />}
+
+      {/* Recurring Expenses Section */}
+      {user && <RecurringExpensesSection userId={user.id} />}
 
       {/* Future sections can be added here */}
       {/* For example: Notification Settings, Privacy Settings, etc. */}
