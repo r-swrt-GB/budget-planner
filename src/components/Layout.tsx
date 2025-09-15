@@ -49,7 +49,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600 mr-2" />
-              <h1 className="text-xl font-semibold text-gray-900">Budget Tracker</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Balance Buddy</h1>
             </div>
             {user && (
               <div className="flex items-center space-x-4">

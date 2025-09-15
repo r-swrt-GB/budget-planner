@@ -13,13 +13,13 @@ export function AuthPage() {
           <DollarSign className="h-12 w-12 text-green-600" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-          Budget Tracker
+          Balance Buddy
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Track your income, expenses, and savings with ease
         </p>
          <p className="mt-2 text-center text-sm text-gray-400">
-          <i>(Designed and engineered by Elzé and Francois Borman)</i> 
+          {/* <i>(Designed and engineered by Elzé and Francois Borman)</i>  */}
         </p>
       </div>
 
