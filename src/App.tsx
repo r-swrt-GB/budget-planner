@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { AuthPage } from './components/Auth/AuthPage';
 import { Layout } from './components/Layout';
@@ -8,6 +8,7 @@ import { EditBudget } from './pages/EditBudget';
 import { ViewBudget } from './pages/ViewBudget';
 import { TelegramBot } from './pages/TelegramBot';
 import { Settings } from './pages/Settings';
+import { LandingPage } from './pages/LandingPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -24,14 +25,15 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage />;
+    return <LandingPage />;
   }
 
   return (
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/telegram-bot" element={<TelegramBot />} />
