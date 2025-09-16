@@ -10,10 +10,12 @@ import {
   PieChart,
   Calculator
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 
 export function LandingPage() {
+  const navigate = useNavigate();
   const features = [
     {
       icon: FileSpreadsheet,
@@ -80,11 +82,18 @@ export function LandingPage() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                 <Button 
-                  onClick={() => { window.location.href = '/auth'; }}
+                  onClick={() => navigate('/auth')}
                   className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                 >
                   Get Started Free
                   <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <Button 
+                  onClick={() => navigate('/auth')}
+                  variant="outline"
+                  className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-green-600 text-green-600 hover:bg-green-50"
+                >
+                  Login
                 </Button>
               </div>
 
@@ -200,7 +209,7 @@ export function LandingPage() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
-              onClick={() => { window.location.href = '/auth'; }}
+              onClick={() => navigate('/auth')}
               className="bg-white text-green-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Start Your Free Budget
@@ -226,7 +235,7 @@ export function LandingPage() {
               Your smart budget planning companion
             </p>
             <div className="text-gray-500 text-sm">
-              © {new Date().getFullYear()} Balance Buddy. Built by <a href="https://www.linkedin.com/in/rikus-swart-68870b1b8/">Rikus Swart</a>. 
+              © {new Date().getFullYear()} Balance Buddy. Built by <a href="https://www.linkedin.com/in/rikus-swart-68870b1b8/">Rikus Swart</a>. Inspired by Elzé and Francois Borman. 
             </div>
           </div>
         </div>

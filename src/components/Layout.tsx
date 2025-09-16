@@ -37,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
 
   const isActivePath = (path: string) => {
     if (path === '/dashboard') {
-      return location.pathname === '/dashboard' || location.pathname === '/';
+      return location.pathname === '/dashboard';
     }
     return location.pathname.startsWith(path);
   };

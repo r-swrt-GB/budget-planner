@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { AuthPage } from './components/Auth/AuthPage';
 import { Layout } from './components/Layout';
@@ -25,21 +25,29 @@ function App() {
   }
 
   if (!user) {
-    return <LandingPage />;
+    return (
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    );
   }
 
   return (
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/telegram-bot" element={<TelegramBot />} />
           <Route path="/budgets/create" element={<CreateBudget />} />
           <Route path="/budgets/:id/edit" element={<EditBudget />} />
           <Route path="/budgets/:id" element={<ViewBudget />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Layout>
     </Router>
